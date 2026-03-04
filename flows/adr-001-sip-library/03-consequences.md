@@ -1,0 +1,209 @@
+# ADR-001: SIP Library Selection - Consequences
+
+> **Status**: DRAFT  
+> **Type**: Constraining  
+> **Date**: 2026-03-04
+
+## Technical Consequences
+
+### Positive
+
+1. **Full SIP Protocol Support**
+   - Account registration with SIP servers
+   - Complete call lifecycle management
+   - Advanced features: transfer, redirect, DTMF
+
+2. **Cross-Platform Code Reuse**
+   - Single JavaScript API for iOS and Android
+   - Shared business logic
+   - Platform-specific code isolated to push notifications
+
+3. **Push Notification Integration**
+   - iOS VoIP push notifications working
+   - Background call reception
+   - Automatic re-registration on push
+
+4. **Redux Integration**
+   - Predictable state management
+   - Easy debugging with Redux DevTools
+   - Centralized account/call state
+
+### Negative
+
+1. **CallKit Limitation Accepted**
+   - Single active call only
+   - Custom UI required for multiple calls
+   - iOS native integration incomplete
+
+2. **Technical Debt**
+   - `replaceAccount()` not implemented
+   - Hardcoded development credentials
+   - Incomplete CallKit integration (commented out)
+   - Missing Stomp connectivity handling
+
+3. **Third-Party Dependency**
+   - Reliance on react-native-sip2 maintenance
+   - Smaller community than original library
+   - Potential breaking changes in future versions
+
+4. **Security Concerns**
+   - Credentials in source code
+   - No encryption of SIP configuration
+   - Push tokens in Redux state (in-memory only)
+
+## Architectural Consequences
+
+### Constraints Imposed
+
+1. **State Management Pattern**
+   - Must use Redux for SIP state
+   - Thunk pattern for async operations
+   - Event-driven updates via endpoint.on()
+
+2. **Platform Divergence**
+   - iOS: Push notifications + AppState monitoring
+   - Android: Simpler flow, no CallKit
+   - Platform-specific code paths required
+
+3. **Call Lifecycle**
+   - Calls managed via Endpoint instance
+   - Event-driven state updates
+   - Navigation tied to call events
+
+### Dependencies Created
+
+```
+react-native-dialer-sip
+└── react-native-sip2@^3.0.2
+    └── PJSIP (native)
+└── react-native-voip-push-notification (iOS)
+└── uuid@^3.3.3 (CallKit integration)
+```
+
+## Migration Consequences
+
+### From react-native-pjsip
+
+**Effort**: Low (drop-in replacement)
+
+**Changes Required**:
+```javascript
+// Before
+import {Endpoint} from 'react-native-pjsip'
+
+// After
+import {Endpoint} from 'react-native-sip2'
+```
+
+**Benefits**:
+- Bug fixes from newer library
+- Better React Native 0.61.5 compatibility
+- Active maintenance
+
+## Operational Consequences
+
+### Development
+
+- Team must understand SIP protocol basics
+- Platform-specific testing required (iOS vs Android)
+- Push notification setup needed for iOS
+
+### Testing
+
+- Device testing required (simulators limited for calls)
+- iOS push notification certificate management
+- Network condition testing (WiFi, 3G, roaming)
+
+### Deployment
+
+- iOS: VoIP push notification certificate required
+- Android: No special requirements
+- Network configuration may need adjustment per environment
+
+## Security Consequences
+
+### ⚠️ Immediate Actions Required
+
+1. **Remove Hardcoded Credentials**
+   ```javascript
+   // CURRENT (INSECURE)
+   username: "50363",
+   password: "pass50363",
+   domain: "172.16.104.17"
+   
+   // RECOMMENDED
+   // Load from secure configuration
+   // Use environment variables or secure storage
+   ```
+
+2. **Secure Push Token Storage**
+   - Currently in Redux (in-memory)
+   - Consider encrypted persistence if needed
+
+3. **Transport Security**
+   - Currently UDP (unencrypted)
+   - Consider TLS transport for production
+
+## Performance Consequences
+
+### Positive
+
+- O(1) account/call lookup via map structure
+- Immediate event dispatch to Redux
+- Efficient re-rendering via React-Redux
+
+### Negative
+
+- Endpoint initialization on every app start
+- No connection pooling or reuse across sessions
+- State not persisted (must re-register on start)
+
+## Compliance Consequences
+
+### Regulatory
+
+- VoIP calls may be subject to telecommunications regulations
+- Emergency calling (E911) may not be supported
+- Call recording laws may apply
+
+### Privacy
+
+- SIP credentials transmission
+- Call metadata storage
+- Push token handling
+
+## Future-Proofing
+
+### Upgrade Path
+
+- Monitor react-native-sip2 for updates
+- Watch for React Native compatibility issues
+- Plan for potential library fork if needed
+
+### Exit Strategy
+
+If react-native-sip2 becomes unmaintained:
+
+1. Fork and maintain internally
+2. Migrate back to react-native-pjsip
+3. Build custom native module (high effort)
+
+## Monitoring
+
+### Health Indicators
+
+- Library update frequency
+- Issue resolution time
+- Community activity (GitHub stars, forks, issues)
+- Compatibility with new React Native versions
+
+### Triggers for Re-evaluation
+
+- Critical security vulnerability
+- Breaking change in library
+- React Native major version incompatibility
+- Library abandonment (no updates > 6 months)
+
+---
+
+*Generated by /legacy analysis | Status: DRAFT | Review required*
